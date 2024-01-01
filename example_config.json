@@ -1,0 +1,18 @@
+{
+    "channel_username": "HollieShadbolt",
+    "token": "thisiswhereyourtokenwillgo",
+    "announcements": {
+        "videos": {
+            "content": "Message One",
+            "channel_id": 1234567890
+        },
+        "shorts": {
+            "content": "Message Two",
+            "channel_id": 1234567890
+        },
+        "streams": {
+            "content": "Message Three",
+            "channel_id": 1234567890
+        }
+    }
+}
