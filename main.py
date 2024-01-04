@@ -53,17 +53,19 @@ class Looper():
     def run(self) -> None:
         """Main entry point."""
 
+        logging.info("Starting...")
+
         while True:
             self.looper()
 
     def looper(self) -> None:
         """Looping method."""
 
-        logging.info("Sleeping...")
+        logging.debug("Sleeping...")
 
         time.sleep(1)
 
-        logging.info("Checking for updates...")
+        logging.debug("Checking for updates...")
 
         for content_type, video_ids in self.video_ids.items():
             self.try_check_video_ids(content_type, video_ids)
@@ -76,7 +78,8 @@ class Looper():
 
         try:
             self.get_video_ids(content_type)
-        except requests.exceptions.ConnectionError:
+        except (requests.exceptions.ConnectionError,
+                json.decoder.JSONDecodeError):
             logging.error("Failed to get Video IDs for '%s'.", content_type)
         else:
             self.check_new_video_ids(content_type, video_ids)
