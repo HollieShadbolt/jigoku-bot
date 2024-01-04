@@ -105,10 +105,12 @@ class Looper():
         logging.info("Found new Video ID: '%s'.", video_id)
 
         try:
-            self.send_announcment(content_type, video_id)
+            result = self.send_announcment(content_type, video_id)
         except requests.exceptions.Timeout:
             logging.error("Announcement attempt timed out.")
-        else:
+            return
+
+        if result:
             self.video_ids[content_type].append(video_id)
 
     def send_announcment(
