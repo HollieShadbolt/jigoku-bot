@@ -36,15 +36,17 @@ class Looper():
 
     def get_video_ids(
             self,
-            content_type: CONTENT_TYPES) -> list[str]:
-        """Get a list of all Video IDs for a given Content Type."""
+            content_type: CONTENT_TYPES,
+            **kwargs) -> set[str]:
+        """Get a set of all Video IDs for a given Content Type."""
 
         logging.debug("Getting '%s' Video IDs...", content_type)
 
-        video_ids = [video['videoId'] for video in scrapetube.get_channel(
+        video_ids = set([video['videoId'] for video in scrapetube.get_channel(
             channel_username=self.channel_username,
-            content_type=content_type
-        )]
+            content_type=content_type,
+            limit=kwargs.get("limit", None)
+        )])
 
         logging.debug("Got'%s' Video IDs: %s", content_type, video_ids)
 
@@ -67,17 +69,16 @@ class Looper():
 
         logging.debug("Checking for updates...")
 
-        for content_type, video_ids in self.video_ids.items():
-            self.try_check_video_ids(content_type, video_ids)
+        for content_type in self.video_ids:
+            self.try_check_video_ids(content_type)
 
     def try_check_video_ids(
             self,
-            content_type: CONTENT_TYPES,
-            video_ids: list[str]) -> None:
+            content_type: CONTENT_TYPES) -> None:
         """Try to check and announce any new Video IDs."""
 
         try:
-            self.get_video_ids(content_type)
+            video_ids = self.get_video_ids(content_type, limit=28)
         except (requests.exceptions.ConnectionError,
                 json.decoder.JSONDecodeError):
             logging.error("Failed to get Video IDs for '%s'.", content_type)
@@ -87,7 +88,7 @@ class Looper():
     def check_new_video_ids(
             self,
             content_type: CONTENT_TYPES,
-            video_ids: list[str]) -> None:
+            video_ids: set[str]) -> None:
         """Check and announce new Video IDs for the Content Type."""
 
         for video_id in video_ids:
@@ -111,7 +112,7 @@ class Looper():
             return
 
         if result:
-            self.video_ids[content_type].append(video_id)
+            self.video_ids[content_type].add(video_id)
 
     def send_announcment(
             self,
