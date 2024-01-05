@@ -30,7 +30,10 @@ class Looper():
         logging.info("Initializing...")
 
         for content_type in typing.get_args(self.CONTENT_TYPES):
+            logging.info("Getting '%s' Video IDs...", content_type)
             self.video_ids[content_type] = self.get_video_ids(content_type)
+            count = f"{len(self.video_ids[content_type]):,}"
+            logging.info("Got %s Video IDs for '%s'.", count, content_type)
 
         logging.info("Initialized.")
 
