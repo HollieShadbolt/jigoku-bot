@@ -1,7 +1,6 @@
 """A script for announcing new YouTube Videos to Discord."""
 
 import logging
-import typing
 import json
 import time
 import sys
@@ -29,7 +28,7 @@ class Looper():
 
         logging.info("Initializing...")
 
-        for content_type in typing.get_args(self.CONTENT_TYPES):
+        for content_type in announcements:
             logging.info("Getting '%s' Video IDs...", content_type)
             self.video_ids[content_type] = self.get_video_ids(content_type)
             count = f"{len(self.video_ids[content_type]):,}"
