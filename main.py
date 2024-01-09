@@ -133,7 +133,7 @@ class Looper():
 
         response = requests.post(
             url,
-            {"content": f"@everyone {content}"},
+            {"content": f"{content}"},
             headers={"Authorization": f"Bot {self.token}"},
             timeout=60
         )
