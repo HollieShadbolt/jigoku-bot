@@ -1,11 +1,10 @@
 """A script for announcing new YouTube Videos to Discord."""
 
 import logging
+import typing
 import json
 import time
 import sys
-
-from typing import Literal
 
 import scrapetube
 import requests
@@ -14,50 +13,35 @@ import requests
 class Looper():
     """Looping class to continuously check for updates."""
 
-    CONTENT_TYPES = Literal['videos', 'shorts', 'streams']
+    CONTENT_TYPES = typing.Literal['videos', 'shorts', 'streams']
 
     def __init__(
-            self,
-            announcements: dict[CONTENT_TYPES, dict[str, str]],
-            channel_username: str,
-            token: str) -> None:
+            self, announcements: dict[CONTENT_TYPES, dict[str, str]],
+            channel_username: str, token: str,
+            limit: typing.Optional[int] = None) -> None:
         self.channel_username = channel_username
         self.announcements = announcements
-        self.video_ids = {}
+        self.video_ids = set()
         self.token = token
 
-        logging.info("Initializing...")
+        logging.info("Getting initial Video IDs...")
 
-        for content_type in announcements:
-            logging.info("Getting '%s' Video IDs...", content_type)
-            self.video_ids[content_type] = self.get_video_ids(content_type)
-            count = f"{len(self.video_ids[content_type]):,}"
-            logging.info("Got %s Video IDs for '%s'.", count, content_type)
+        for content_type in announcements.keys():
+            self.video_ids.update(self.get_ids(content_type, limit=limit))
 
-        logging.info("Initialized.")
+        logging.info("Got %s Video IDs.", f"{len(self.video_ids):,}")
 
-    def get_video_ids(
-            self,
-            content_type: CONTENT_TYPES,
-            **kwargs) -> set[str]:
-        """Get a set of all Video IDs for a given Content Type."""
+    def get_ids(self, content_type: CONTENT_TYPES, **kwargs) -> set[str]:
+        """Get all Video IDs for a given Content Type."""
 
-        logging.debug("Getting '%s' Video IDs...", content_type)
-
-        video_ids = set([video['videoId'] for video in scrapetube.get_channel(
+        return {video['videoId'] for video in scrapetube.get_channel(
             channel_username=self.channel_username,
             content_type=content_type,
             limit=kwargs.get("limit", None)
-        )])
-
-        logging.debug("Got'%s' Video IDs: %s", content_type, video_ids)
-
-        return video_ids
+        )}
 
     def run(self) -> None:
         """Main entry point."""
-
-        logging.info("Starting...")
 
         while True:
             self.looper()
@@ -65,61 +49,45 @@ class Looper():
     def looper(self) -> None:
         """Looping method."""
 
-        logging.debug("Sleeping...")
-
         time.sleep(1)
 
-        logging.debug("Checking for updates...")
-
-        for content_type in self.video_ids:
+        for content_type in self.announcements:
             self.try_check_video_ids(content_type)
 
-    def try_check_video_ids(
-            self,
-            content_type: CONTENT_TYPES) -> None:
+    def try_check_video_ids(self, content_type: CONTENT_TYPES) -> None:
         """Try to check and announce any new Video IDs."""
 
         try:
-            video_ids = self.get_video_ids(content_type, limit=28)
+            video_ids = self.get_ids(content_type, limit=10)
         except (requests.exceptions.ConnectionError,
-                json.decoder.JSONDecodeError):
-            logging.error("Failed to get Video IDs for '%s'.", content_type)
+                json.decoder.JSONDecodeError) as exception:
+            logging.error(exception)
         else:
             self.check_new_video_ids(content_type, video_ids)
 
     def check_new_video_ids(
-            self,
-            content_type: CONTENT_TYPES,
-            video_ids: set[str]) -> None:
+            self, content_type: CONTENT_TYPES, video_ids: set[str]) -> None:
         """Check and announce new Video IDs for the Content Type."""
 
         for video_id in video_ids:
             self.check_new_video_id(content_type, video_id)
 
     def check_new_video_id(
-            self,
-            content_type: CONTENT_TYPES,
-            video_id: str) -> None:
-        """Try to check and announce if the Video ID is new."""
+            self, content_type: CONTENT_TYPES, video_id: str) -> None:
+        """Check and try to announce if the Video ID is new."""
 
-        if video_id in self.video_ids[content_type]:
+        if video_id in self.video_ids:
             return
 
         logging.info("Found new Video ID: '%s'.", video_id)
 
         try:
-            result = self.send_announcment(content_type, video_id)
+            self.send_announcment(content_type, video_id)
         except requests.exceptions.Timeout:
             logging.error("Announcement attempt timed out.")
-            return
-
-        if result:
-            self.video_ids[content_type].add(video_id)
 
     def send_announcment(
-            self,
-            content_type: CONTENT_TYPES,
-            video_id: str) -> bool:
+            self, content_type: CONTENT_TYPES, video_id: str) -> None:
         """Announce the new Video ID for the Content Type."""
 
         data = self.announcements[content_type]
@@ -127,7 +95,7 @@ class Looper():
             {data['channel_id']}/messages"
 
         content = f"{data['content']} \
-            https://www.youtube.com/watch?v={video_id}"
+            \nhttps://www.youtube.com/watch?v={video_id}"
 
         logging.info("Sending announcement: '%s'...", content)
 
@@ -138,14 +106,11 @@ class Looper():
             timeout=60
         )
 
-        result = response.status_code == 200
-
-        if result:
+        if response.status_code == 200:
             logging.info("Announcement sent.")
+            self.video_ids.add(video_id)
         else:
-            logging.error("Post failed: '%s'.", response.content)
-
-        return result
+            logging.error("Post failed: '%s'.", response)
 
 
 def main():
