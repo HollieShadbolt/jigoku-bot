@@ -49,7 +49,7 @@ class Looper():
     def looper(self) -> None:
         """Looping method."""
 
-        time.sleep(1)
+        time.sleep(2)
 
         for content_type in self.announcements:
             self.try_check_video_ids(content_type)
