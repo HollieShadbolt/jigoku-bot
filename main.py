@@ -61,7 +61,8 @@ class Looper():
             video_ids = self.get_ids(content_type, limit=10)
         except (requests.exceptions.ConnectionError,
                 json.decoder.JSONDecodeError,
-                requests.exceptions.ChunkedEncodingError) as exception:
+                requests.exceptions.ChunkedEncodingError,
+                requests.exceptions.ConnectionError) as exception:
             logging.error(exception)
         else:
             self.check_new_video_ids(content_type, video_ids)
